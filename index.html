@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Inteligente</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        input { width: 80%; padding: 10px; font-size: 24px; text-align: center; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ccc; letter-spacing: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        button { padding: 20px; font-size: 18px; border: none; background: #e0e0e0; border-radius: 5px; cursor: pointer; }
+        button:active { background: #cbd5e1; }
+        .btn-enter { background: #22c55e; color: white; grid-column: span 3; }
+        .btn-enter:active { background: #16a34a; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Introduce el Código</h2>
+    <input type="password" id="code" readonly placeholder="••••">
+    <div class="grid">
+        <button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button>
+        <button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button>
+        <button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button>
+        <button onclick="clearCode()">C</button><button onclick="press(0)">0</button><button class="btn-enter" onclick="submitCode()">ABRIR PUERTA</button>
+    </div>
+    <div id="status"></div>
+</div>
+
+<script>
+    // CONFIGURACIÓN (Rellena con tus datos)
+    const CODIGO_CORRECTO = "1234"; // Define aquí tu pin de acceso
+    const SHELLY_SERVER = "https://shelly-149-eu.shelly.cloud"; // Reemplaza XX por tu servidor
+    const DEVICE_ID = "dcda0ce3848c"; 
+    const AUTH_KEY = "MmI5NGMydWlk4A18B89ED9D22F5D4C4DB30DC0B6E68901A2267D2A582FA256266E4E85E2BC5011BA1201ED57F1BF";
+
+    let inputField = document.getElementById('code');
+    let statusField = document.getElementById('status');
+
+    function press(num) {
+        if(inputField.value.length < 6) inputField.value += num;
+    }
+    function clearCode() {
+        inputField.value = "";
+        statusField.innerText = "";
+    }
+
+    function submitCode() {
+        if (inputField.value === CODIGO_CORRECTO) {
+            statusField.style.color = "blue";
+            statusField.innerText = "Código correcto. Abriendo...";
+            
+            // Petición HTTP POST a la API Cloud de Shelly
+            const url = `${SHELLY_SERVER}/device/relay/control`;
+            const formData = new URLSearchParams();
+            formData.append('channel', '0');
+            formData.append('turn', 'on');
+            formData.append('auth_key', AUTH_KEY);
+            formData.append('id', DEVICE_ID);
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.isok) {
+                    statusField.style.color = "green";
+                    statusField.innerText = "¡Puerta abierta con éxito!";
+                } else {
+                    statusField.style.color = "red";
+                    statusField.innerText = "Error en la comunicación con Shelly.";
+                }
+                setTimeout(clearCode, 4000);
+            })
+            .catch(error => {
+                statusField.style.color = "red";
+                statusField.innerText = "Error de red.";
+                setTimeout(clearCode, 4000);
+            });
+
+        } else {
+            statusField.style.color = "red";
+            statusField.innerText = "Código incorrecto.";
+            setTimeout(clearCode, 2000);
+        }
+    }
+</script>
+</body>
+</html>
